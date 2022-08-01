@@ -1,60 +1,76 @@
+const { response } = require("express");
 const express = require("express");
 const app = express();
-const https = require("https");
+const mongoose = require("mongoose");
+const _ = require("lodash");
 
-const blogs = require(__dirname + "/blogs.js");
-const contents = require(__dirname + "/contents.js");
-
-const posts = [];
-
-app.set('view engine', 'ejs');
-//for body parser from req
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
+app.set("view engine", "ejs");
 
+// ----------------DB setup
+mongoose.connect("mongodb://localhost:27017/blogDB");
 
-app.get("/", (req, res) => {
-  res.render("home", { home: contents.homeStartingContent, posts: posts });
+const blogSchema = new mongoose.Schema({
+  title: String,
+  content: String
 });
 
-app.get("/about", (req, res) => {
-  res.render("about", { aboutcontent: contents.aboutContent });
-});
+const blogModel = mongoose.model('post', blogSchema);
 
-app.get("/compose", (req, res) => {
-  res.render("compose");
-});
+// -------------routes
+app.get("/", (request, response) => {
 
-app.post("/compose", (req, res) => {
-  const compose = {
-    title: req.body.title,
-    post: req.body.post
-  };
-
-  posts.push(compose);
-  res.redirect('/');
-});
-
-app.get("/contact", (req, res) => {
-  res.render("contact", { contactcontent: contents.contactContent });
-});
-
-app.get("/post", (req, res) => {
-  res.render("post");
-});
-
-app.get("/post/:dynamicpost", (req, res) => {
-  const parameter = req.params.dynamicpost.replace("-", " ").toUpperCase();
-
-  posts.forEach((post) => {
-    const title = post.title.toUpperCase();
-    if (title === parameter) {
-      res.render("post", { post: post });
+  blogModel.find({}, (err, allblogs) => {
+    // const blogs = allblogs;
+    if (!err && allblogs.length > 0) {
+      // console.log(allblogs);
+      // console.log(typeof allblogs);
+      response.render("home", { blogs: allblogs });
+    }
+    else {
+      response.render("error");
     }
   });
 
 });
 
-app.listen(process.env.PORT || 8000, () => {
-  console.log("Server set up");
+app.get("/compose", (request, response) => {
+  response.render("compose");
+});
+
+app.post("/compose", (request, response) => {
+  const title = _.capitalize(request.body.title);
+  const content = request.body.post;
+  const compose = new blogModel({ title: title, content: content });
+
+  compose.save()
+    .then(() => response.redirect("/"))
+    .catch((err) => response.redirect("/compose"));
+
+});
+
+app.get("/content/:content", (request, response) => {
+  const content = _.capitalize(request.params.content);
+
+  blogModel.findOne({ title: content }, (err, foundType) => {
+    if (err) {
+      console.log(err);
+    }
+    else {
+      if (foundType) {
+
+        response.render("content", { title: foundType.title, post: foundType.content });
+      }
+      else {
+        response.redirect("/");
+      }
+    }
+  });
+});
+
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server set up at ${port}`);
 });
