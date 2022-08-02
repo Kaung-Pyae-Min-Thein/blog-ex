@@ -50,10 +50,10 @@ app.post("/compose", (request, response) => {
 
 });
 
-app.get("/content/:content", (request, response) => {
-  const content = _.capitalize(request.params.content);
+app.get("/content/:contentId", (request, response) => {
+  const contentId = _.capitalize(request.params.contentId);
 
-  blogModel.findOne({ title: content }, (err, foundType) => {
+  blogModel.findOne({ id: contentId }, (err, foundType) => {
     if (err) {
       console.log(err);
     }
